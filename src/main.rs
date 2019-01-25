@@ -5,6 +5,7 @@ use std::cmp::PartialEq;
 use std::convert::From;
 use std::fmt;
 use yew::prelude::*;
+use yew::virtual_dom::VNode;
 
 enum Msg {
     IncreaseStatus(usize),
@@ -25,7 +26,7 @@ enum Status {
 }
 
 impl Status {
-    fn move_left(&self) -> Self {
+    fn left(&self) -> Self {
         match self {
             Status::Done => Status::Ready,
             Status::Ready => Status::Testing,
@@ -36,7 +37,7 @@ impl Status {
         }
     }
 
-    fn move_right(&self) -> Self {
+    fn right(&self) -> Self {
         match self {
             Status::ToDo => Status::InProgress,
             Status::InProgress => Status::Review,
@@ -99,6 +100,16 @@ struct Task {
     status: Status,
 }
 
+impl Task {
+    fn can_left(&self) -> bool {
+        self.status != Status::ToDo
+    }
+
+    fn can_right(&self) -> bool {
+        self.status != Status::Done
+    }
+}
+
 struct State {
     tasks: Vec<Task>,
     new_task_name: String,
@@ -107,19 +118,15 @@ struct State {
 }
 
 impl State {
-    fn increase_status(&mut self, idx: usize) {
-        self.tasks
-            .get_mut(idx)
-            .map(|e| e.status = e.status.move_right());
-    }
-
-    fn decrease_status(&mut self, idx: usize) {
-        self.tasks
-            .get_mut(idx)
-            .map(|e| e.status = e.status.move_left());
+    fn find_task_by(&mut self, idx: usize) -> Option<&mut Task> {
+        self.tasks.get_mut(idx)
     }
 
     fn add_new_task(&mut self, name: String, assignee: String, estimate: u32) {
+        self.new_task_assignee = "".to_string();
+        self.new_task_estimate = 0;
+        self.new_task_name = "".to_string();
+
         self.tasks.push(Task {
             name,
             assignee,
@@ -197,13 +204,19 @@ impl Component for Model {
                 self.state.new_task_estimate,
             ),
 
-            Msg::IncreaseStatus(idx) => {
-                self.state.increase_status(idx);
-            }
+            Msg::IncreaseStatus(idx) => match self.state.find_task_by(idx) {
+                None => (),
+                Some(task) => {
+                    task.status = task.status.right();
+                }
+            },
 
-            Msg::DecreaseStatus(idx) => {
-                self.state.decrease_status(idx);
-            }
+            Msg::DecreaseStatus(idx) => match self.state.find_task_by(idx) {
+                None => (),
+                Some(task) => {
+                    task.status = task.status.left();
+                }
+            },
         }
         true
     }
@@ -244,6 +257,24 @@ fn view_column(status: Status, tasks: &Vec<Task>) -> Html<Model> {
 }
 
 fn view_task((idx, task): (usize, &Task)) -> Html<Model> {
+    let button_left: VNode<Model> = match task.can_left() {
+        true => html! {
+            <button class="button is-small is-white", onclick=|_| Msg::DecreaseStatus(idx),>{ "◀︎" }</button>
+        },
+        false => html! {
+            <></>
+        },
+    };
+
+    let button_right: VNode<Model> = match task.can_right() {
+        true => html! {
+            <button class="button is-small is-white", onclick=|_| Msg::IncreaseStatus(idx),>{ "▶︎︎" }</button>
+        },
+        false => html! {
+            <></>
+        },
+    };
+
     html! {
         <div class="card",>
             <div class="card-content",>
@@ -259,10 +290,10 @@ fn view_task((idx, task): (usize, &Task)) -> Html<Model> {
             </footer>
             <footer class="card-footer",>
                 <span class="card-footer-item",>
-                    <button class="button is-small is-white", onclick=|_| Msg::DecreaseStatus(idx),>{ "◀︎" }</button>
+                    {button_left}
                 </span>
                 <span class="card-footer-item",>
-                    <button class="button is-small is-white", onclick=|_| Msg::IncreaseStatus(idx),>{ "▶︎︎" }</button>
+                    {button_right}
                 </span>
             </footer>
         </div>
