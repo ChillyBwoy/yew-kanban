@@ -5,4 +5,4 @@ authors = ["Eugene Cheltsov <chill.icp@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-yew = { git = "https://github.com/DenisKolodin/yew" }
+yew = { git = "https://github.com/DenisKolodin/yew", features = ["toml", "yaml", "msgpack", "cbor"] }

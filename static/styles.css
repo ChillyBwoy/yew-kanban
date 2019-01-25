@@ -1,20 +1,31 @@
-.status-1 {
-    background-color: #ed8077;
+.status-todo {
+    background-color: #d32f2f;
 }
 
-.status-2 {
-    background-color: #4488c5;
+.status-in_progress {
+    background-color: #dc4b22;
 }
 
-.status-3 {
-    background-color: #5eb5a6;
+.status-review {
+    background-color: #fbc02d;
+}
+
+.status-testing {
+    background-color: #cddc39;
+}
+
+.status-ready {
+    background-color: #8bc34a;
+}
+
+.status-done {
+    background-color: #4caf50;
 }
 
 .card {
     margin-bottom: 5px;
 }
 
-.card-footer-item {
-    padding-top: 0px;
-    padding-bottom: 0px;
+.header {
+    padding: 20px 0;
 }
