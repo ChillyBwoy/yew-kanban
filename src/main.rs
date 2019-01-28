@@ -1,11 +1,14 @@
 #[macro_use]
 extern crate yew;
 
-use std::cmp::PartialEq;
 use std::convert::From;
-use std::fmt;
 use yew::prelude::*;
 use yew::virtual_dom::VNode;
+
+mod status;
+mod task;
+use crate::status::Status;
+use crate::task::Task;
 
 enum Msg {
     IncreaseStatus(usize),
@@ -16,105 +19,9 @@ enum Msg {
     NewTask,
 }
 
-enum Status {
-    ToDo,
-    InProgress,
-    Review,
-    Testing,
-    Ready,
-    Done,
-}
-
-impl Status {
-    fn left(&self) -> Self {
-        match self {
-            Status::Done => Status::Ready,
-            Status::Ready => Status::Testing,
-            Status::Testing => Status::Review,
-            Status::Review => Status::InProgress,
-            Status::InProgress => Status::ToDo,
-            Status::ToDo => Status::ToDo,
-        }
-    }
-
-    fn right(&self) -> Self {
-        match self {
-            Status::ToDo => Status::InProgress,
-            Status::InProgress => Status::Review,
-            Status::Review => Status::Testing,
-            Status::Testing => Status::Ready,
-            Status::Ready => Status::Done,
-            Status::Done => Status::Done,
-        }
-    }
-
-    fn name(&self) -> &str {
-        match self {
-            Status::ToDo => "To be done",
-            Status::InProgress => "In progress",
-            Status::Review => "Review",
-            Status::Testing => "Testing",
-            Status::Ready => "Ready",
-            Status::Done => "Done",
-        }
-    }
-}
-
-impl PartialEq for Status {
-    fn eq(&self, other: &Status) -> bool {
-        self.to_string() == other.to_string()
-    }
-}
-
-impl From<&str> for Status {
-    fn from(s: &str) -> Self {
-        match s {
-            "todo" => Status::ToDo,
-            "in_progress" => Status::InProgress,
-            "review" => Status::Review,
-            "testing" => Status::Testing,
-            "ready" => Status::Ready,
-            "done" => Status::Done,
-            _ => Status::ToDo,
-        }
-    }
-}
-
-impl fmt::Display for Status {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Status::ToDo => write!(f, "todo"),
-            Status::InProgress => write!(f, "in_progress"),
-            Status::Review => write!(f, "review"),
-            Status::Testing => write!(f, "testing"),
-            Status::Ready => write!(f, "ready"),
-            Status::Done => write!(f, "done"),
-        }
-    }
-}
-
-struct Task {
-    name: String,
-    assignee: String,
-    estimate: u32,
-    status: Status,
-}
-
-impl Task {
-    fn can_left(&self) -> bool {
-        self.status != Status::ToDo
-    }
-
-    fn can_right(&self) -> bool {
-        self.status != Status::Done
-    }
-}
-
 struct State {
     tasks: Vec<Task>,
-    new_task_name: String,
-    new_task_assignee: String,
-    new_task_estimate: u32,
+    new_task: Task,
 }
 
 impl State {
@@ -122,11 +29,11 @@ impl State {
         self.tasks.get_mut(idx)
     }
 
-    fn add_new_task(&mut self, name: String, assignee: String, estimate: u32) {
-        self.new_task_assignee = "".to_string();
-        self.new_task_estimate = 0;
-        self.new_task_name = "".to_string();
+    fn clear_form(&mut self) {
+        self.new_task = Task::create_empty();
+    }
 
+    fn add_new_task(&mut self, name: String, assignee: String, estimate: u32) {
         self.tasks.push(Task {
             name,
             assignee,
@@ -147,35 +54,8 @@ impl Component for Model {
     fn create(_: Self::Properties, _: ComponentLink<Self>) -> Self {
         Model {
             state: State {
-                tasks: vec![
-                    Task {
-                        name: "Task 1".to_string(),
-                        assignee: "🐱".to_string(),
-                        estimate: 3,
-                        status: Status::InProgress,
-                    },
-                    Task {
-                        name: "Task 2".to_string(),
-                        assignee: "🐶".to_string(),
-                        estimate: 2,
-                        status: Status::ToDo,
-                    },
-                    Task {
-                        name: "Task 3".to_string(),
-                        assignee: "🐱".to_string(),
-                        estimate: 1,
-                        status: Status::ToDo,
-                    },
-                    Task {
-                        name: "Task 4".to_string(),
-                        assignee: "🐹".to_string(),
-                        estimate: 3,
-                        status: Status::Done,
-                    },
-                ],
-                new_task_name: "".to_string(),
-                new_task_assignee: "".to_string(),
-                new_task_estimate: 0,
+                tasks: vec![],
+                new_task: Task::create_empty(),
             },
         }
     }
@@ -183,26 +63,29 @@ impl Component for Model {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::UpdateNewTaskName(val) => {
-                self.state.new_task_name = val;
+                self.state.new_task.name = val;
             }
 
             Msg::UpdateNewTaskAssignee(val) => {
                 if let yew::html::ChangeData::Select(v) = &val {
-                    self.state.new_task_assignee = v.raw_value();
+                    self.state.new_task.assignee = v.raw_value();
                 }
             }
 
             Msg::UpdateNewTaskMandays(val) => {
                 if let Ok(v) = u32::from_str_radix(&val, 10) {
-                    self.state.new_task_estimate = v;
+                    self.state.new_task.estimate = v;
                 }
             }
 
-            Msg::NewTask => self.state.add_new_task(
-                self.state.new_task_name.clone(),
-                self.state.new_task_assignee.clone(),
-                self.state.new_task_estimate,
-            ),
+            Msg::NewTask => {
+                self.state.add_new_task(
+                    self.state.new_task.name.clone(),
+                    self.state.new_task.assignee.clone(),
+                    self.state.new_task.estimate,
+                );
+                self.state.clear_form();
+            }
 
             Msg::IncreaseStatus(idx) => match self.state.find_task_by(idx) {
                 None => (),
@@ -304,7 +187,7 @@ fn view_header(state: &State) -> Html<Model> {
     html! {
         <div class="columns",>
             <div class="column is-half",>
-                <input class="input", type="text", value=&state.new_task_name, oninput=|e| Msg::UpdateNewTaskName(e.value), />
+                <input class="input", type="text", value=&state.new_task.name, oninput=|e| Msg::UpdateNewTaskName(e.value), />
             </div>
 
             <div class="column",>
@@ -312,7 +195,7 @@ fn view_header(state: &State) -> Html<Model> {
             </div>
 
             <div class="column",>
-                <input class="input", type="text", value=&state.new_task_estimate, oninput=|e| Msg::UpdateNewTaskMandays(e.value), />
+                <input class="input", type="text", value=&state.new_task.estimate, oninput=|e| Msg::UpdateNewTaskMandays(e.value), />
             </div>
 
             <div class="column",>
@@ -325,7 +208,7 @@ fn view_header(state: &State) -> Html<Model> {
 fn view_assignee_select(state: &State) -> Html<Model> {
     html! {
         <div class="select is-fullwidth",>
-            <select value=&state.new_task_assignee, onchange=|e| Msg::UpdateNewTaskAssignee(e),>
+            <select value=&state.new_task.assignee, onchange=|e| Msg::UpdateNewTaskAssignee(e),>
                 <option value="🐱",>{ "🐱" }</option>
                 <option value="🐶",>{ "🐶" }</option>
                 <option value="🐹",>{ "🐹" }</option>
