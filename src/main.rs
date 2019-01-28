@@ -7,6 +7,7 @@ use yew::virtual_dom::VNode;
 
 mod status;
 mod task;
+
 use crate::status::Status;
 use crate::task::Task;
 
@@ -107,6 +108,8 @@ impl Component for Model {
 
 impl Renderable<Model> for Model {
     fn view(&self) -> Html<Self> {
+        let State { tasks, .. } = &self.state;
+
         html! {
             <section class="section", id="board",>
                 <div class="container header",>
@@ -114,12 +117,12 @@ impl Renderable<Model> for Model {
                 </div>
                 <div class="container",>
                     <div class="columns",>
-                        { view_column(Status::ToDo, &self.state.tasks) }
-                        { view_column(Status::InProgress, &self.state.tasks) }
-                        { view_column(Status::Review, &self.state.tasks) }
-                        { view_column(Status::Testing, &self.state.tasks) }
-                        { view_column(Status::Ready, &self.state.tasks) }
-                        { view_column(Status::Done, &self.state.tasks) }
+                        { view_column(Status::ToDo, tasks) }
+                        { view_column(Status::InProgress, tasks) }
+                        { view_column(Status::Review, tasks) }
+                        { view_column(Status::Testing, tasks) }
+                        { view_column(Status::Ready, tasks) }
+                        { view_column(Status::Done, tasks) }
                     </div>
                 </div>
             </section>
