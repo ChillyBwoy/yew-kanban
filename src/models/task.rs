@@ -1,4 +1,4 @@
-use crate::status::Status;
+use crate::models::status::Status;
 
 pub struct Task {
   pub name: String,
