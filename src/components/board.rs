@@ -14,12 +14,12 @@ pub enum Msg {
     NewTask,
 }
 
-struct State {
+pub struct Model {
     tasks: Vec<Task>,
     new_task: Task,
 }
 
-impl State {
+impl Model {
     fn find_task_by(&mut self, idx: usize) -> Option<&mut Task> {
         self.tasks.get_mut(idx)
     }
@@ -38,58 +38,52 @@ impl State {
     }
 }
 
-pub struct Model {
-    state: State,
-}
-
 impl Component for Model {
     type Message = Msg;
     type Properties = ();
 
     fn create(_: Self::Properties, _: ComponentLink<Self>) -> Self {
         Model {
-            state: State {
-                tasks: vec![],
-                new_task: Task::create_empty(),
-            },
+            tasks: vec![],
+            new_task: Task::create_empty(),
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::UpdateNewTaskName(val) => {
-                self.state.new_task.name = val;
+                self.new_task.name = val;
             }
 
             Msg::UpdateNewTaskAssignee(val) => {
                 if let yew::html::ChangeData::Select(v) = &val {
-                    self.state.new_task.assignee = v.raw_value();
+                    self.new_task.assignee = v.raw_value();
                 }
             }
 
             Msg::UpdateNewTaskMandays(val) => {
                 if let Ok(v) = u32::from_str_radix(&val, 10) {
-                    self.state.new_task.estimate = v;
+                    self.new_task.estimate = v;
                 }
             }
 
             Msg::NewTask => {
-                self.state.add_new_task(
-                    self.state.new_task.name.clone(),
-                    self.state.new_task.assignee.clone(),
-                    self.state.new_task.estimate,
+                self.add_new_task(
+                    self.new_task.name.clone(),
+                    self.new_task.assignee.clone(),
+                    self.new_task.estimate,
                 );
-                self.state.clear_form();
+                self.clear_form();
             }
 
-            Msg::IncreaseStatus(idx) => match self.state.find_task_by(idx) {
+            Msg::IncreaseStatus(idx) => match self.find_task_by(idx) {
                 None => (),
                 Some(task) => {
                     task.status = task.status.right();
                 }
             },
 
-            Msg::DecreaseStatus(idx) => match self.state.find_task_by(idx) {
+            Msg::DecreaseStatus(idx) => match self.find_task_by(idx) {
                 None => (),
                 Some(task) => {
                     task.status = task.status.left();
@@ -102,24 +96,20 @@ impl Component for Model {
 
 impl Renderable<Model> for Model {
     fn view(&self) -> Html<Self> {
-        let State { tasks, .. } = &self.state;
+        let Model { tasks, .. } = &self;
 
         html! {
-            <section class="section", id="board",>
-                <div class="container header",>
-                    { view_header(&self.state) }
+            <div class="container",>
+                { view_header(&self) }
+                <div class="columns",>
+                    { view_column(Status::ToDo, tasks) }
+                    { view_column(Status::InProgress, tasks) }
+                    { view_column(Status::Review, tasks) }
+                    { view_column(Status::Testing, tasks) }
+                    { view_column(Status::Ready, tasks) }
+                    { view_column(Status::Done, tasks) }
                 </div>
-                <div class="container",>
-                    <div class="columns",>
-                        { view_column(Status::ToDo, tasks) }
-                        { view_column(Status::InProgress, tasks) }
-                        { view_column(Status::Review, tasks) }
-                        { view_column(Status::Testing, tasks) }
-                        { view_column(Status::Ready, tasks) }
-                        { view_column(Status::Done, tasks) }
-                    </div>
-                </div>
-            </section>
+            </div>
         }
     }
 }
@@ -180,19 +170,19 @@ fn view_task((idx, task): (usize, &Task)) -> Html<Model> {
     }
 }
 
-fn view_header(state: &State) -> Html<Model> {
+fn view_header(model: &Model) -> Html<Model> {
     html! {
         <div class="columns",>
             <div class="column is-half",>
-                <input class="input", type="text", value=&state.new_task.name, oninput=|e| Msg::UpdateNewTaskName(e.value), />
+                <input class="input", type="text", value=&model.new_task.name, oninput=|e| Msg::UpdateNewTaskName(e.value), />
             </div>
 
             <div class="column",>
-                {view_assignee_select(state)}
+                {view_assignee_select(model)}
             </div>
 
             <div class="column",>
-                <input class="input", type="text", value=&state.new_task.estimate, oninput=|e| Msg::UpdateNewTaskMandays(e.value), />
+                <input class="input", type="text", value=&model.new_task.estimate, oninput=|e| Msg::UpdateNewTaskMandays(e.value), />
             </div>
 
             <div class="column",>
@@ -202,10 +192,10 @@ fn view_header(state: &State) -> Html<Model> {
     }
 }
 
-fn view_assignee_select(state: &State) -> Html<Model> {
+fn view_assignee_select(model: &Model) -> Html<Model> {
     html! {
         <div class="select is-fullwidth",>
-            <select value=&state.new_task.assignee, onchange=|e| Msg::UpdateNewTaskAssignee(e),>
+            <select value=&model.new_task.assignee, onchange=|e| Msg::UpdateNewTaskAssignee(e),>
                 <option value="🐱",>{ "🐱" }</option>
                 <option value="🐶",>{ "🐶" }</option>
                 <option value="🐹",>{ "🐹" }</option>
